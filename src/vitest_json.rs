@@ -24,6 +24,8 @@ struct VitestResult {
     #[serde(rename = "assertionResults")]
     assertion_results: Vec<AssertionResult>,
     name: String,
+    #[serde(rename = "startTime")]
+    start_time: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -67,6 +69,7 @@ pub fn parse_vitest_json(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
                             0 => None,
                             _ => Some(aresult.failure_messages.join(" ")),
                         },
+                        timestamp: result.start_time.to_string(),
                     })
                 })
                 .collect::<Vec<_>>()

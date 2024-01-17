@@ -9,6 +9,7 @@ def test_vitest_json():
             0.009,
             Outcome.Failure,
             "/root-directory/__tests__/test-file-1.test.ts",
+            "1697737019787",
             "expected 5 to be 4 // Object.is equality",
         ),
         Testrun(
@@ -16,6 +17,7 @@ def test_vitest_json():
             0.009,
             Outcome.Failure,
             "/root-directory/__tests__/test-file-1.test.ts",
+            "1697737019787",
             "expected 5 to be 4 // Object.is equality",
         ),
         Testrun(
@@ -23,6 +25,7 @@ def test_vitest_json():
             0.009,
             Outcome.Failure,
             "/root-directory/__tests__/test-file-1.test.ts",
+            "1697737019787",
             "expected 5 to be 4 // Object.is equality",
         ),
         Testrun(
@@ -30,6 +33,7 @@ def test_vitest_json():
             0.009,
             Outcome.Failure,
             "/root-directory/__tests__/test-file-1.test.ts",
+            "1697737019787",
             "expected 5 to be 4 // Object.is equality",
         ),
     ]

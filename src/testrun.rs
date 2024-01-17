@@ -37,6 +37,8 @@ pub struct Testrun {
     #[pyo3(get, set)]
     pub testsuite: String,
     #[pyo3(get, set)]
+    pub timestamp: String,
+    #[pyo3(get, set)]
     pub failure_message: Option<String>,
 }
 
@@ -47,6 +49,7 @@ impl Testrun {
             duration: 0.0,
             outcome: Outcome::Pass,
             testsuite: s(""),
+            timestamp: s(""),
             failure_message: None,
         }
     }
@@ -60,6 +63,7 @@ impl Testrun {
         duration: f64,
         outcome: Outcome,
         testsuite: String,
+        timestamp: String,
         failure_message: Option<String>,
     ) -> Self {
         Self {
@@ -68,13 +72,19 @@ impl Testrun {
             outcome,
             testsuite,
             failure_message,
+            timestamp,
         }
     }
 
     fn __repr__(&self) -> String {
         format!(
-            "({}, {}, {}, {}, {:?})",
-            self.name, self.outcome, self.duration, self.testsuite, self.failure_message
+            "({}, {}, {}, {}, {}, {:?})",
+            self.name,
+            self.outcome,
+            self.duration,
+            self.testsuite,
+            self.timestamp,
+            self.failure_message,
         )
     }
 
@@ -84,6 +94,7 @@ impl Testrun {
                 && self.outcome == other.outcome
                 && self.duration == other.duration
                 && self.testsuite == other.testsuite
+                && self.timestamp == other.timestamp
                 && self.failure_message == other.failure_message),
             _ => todo!(),
         }

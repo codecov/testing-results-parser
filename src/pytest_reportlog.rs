@@ -147,12 +147,15 @@ pub fn parse_pytest_reportlog(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
                         }
                         _ => None,
                     };
+
+                    let timestamp = start_time.to_string();
                     testruns.push(Testrun {
                         name,
                         testsuite,
                         duration,
                         outcome,
                         failure_message,
+                        timestamp,
                     });
                     saved_start_time = None;
                     saved_failure_message = None;

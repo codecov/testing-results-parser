@@ -22,7 +22,11 @@ fn attributes_map(attributes: Attributes) -> Result<HashMap<String, String>, pyo
     Ok(attr_map)
 }
 
-fn populate(attr_hm: &HashMap<String, String>, testsuite: String) -> Result<Testrun, pyo3::PyErr> {
+fn populate(
+    attr_hm: &HashMap<String, String>,
+    testsuite: String,
+    timestamp: String,
+) -> Result<Testrun, pyo3::PyErr> {
     let name = format!(
         "{}::{}",
         attr_hm
@@ -45,6 +49,7 @@ fn populate(attr_hm: &HashMap<String, String>, testsuite: String) -> Result<Test
         outcome: Outcome::Pass,
         testsuite,
         failure_message: None,
+        timestamp,
     })
 }
 
@@ -61,6 +66,7 @@ pub fn parse_junit_xml(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
     let mut saved_testrun: Option<Testrun> = None;
 
     let mut curr_testsuite = String::new();
+    let mut curr_timestamp = String::new();
     let mut in_failure: bool = false;
 
     loop {
@@ -78,7 +84,11 @@ pub fn parse_junit_xml(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
             Ok(Event::Start(e)) => match e.name().as_ref() {
                 b"testcase" => {
                     let attr_hm = attributes_map(e.attributes());
-                    saved_testrun = Some(populate(&attr_hm?, curr_testsuite.clone())?);
+                    saved_testrun = Some(populate(
+                        &attr_hm?,
+                        curr_testsuite.clone(),
+                        curr_timestamp.clone(),
+                    )?);
                 }
                 b"skipped" => {
                     let mut testrun = saved_testrun
@@ -100,10 +110,15 @@ pub fn parse_junit_xml(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
                     in_failure = true;
                 }
                 b"testsuite" => {
-                    let attr_hm = attributes_map(e.attributes());
+                    let attr_hm = &attributes_map(e.attributes())?;
 
-                    curr_testsuite = attr_hm?
+                    curr_testsuite = attr_hm
                         .get("name")
+                        .ok_or(ParserError::new_err(format!("Error getting name",)))?
+                        .to_string();
+
+                    curr_timestamp = attr_hm
+                        .get("timestamp")
                         .ok_or(ParserError::new_err(format!("Error getting name",)))?
                         .to_string();
                 }
@@ -123,7 +138,11 @@ pub fn parse_junit_xml(file_bytes: Vec<u8>) -> PyResult<Vec<Testrun>> {
             Ok(Event::Empty(e)) => match e.name().as_ref() {
                 b"testcase" => {
                     let attr_hm = attributes_map(e.attributes());
-                    list_of_test_runs.push(populate(&attr_hm?, curr_testsuite.clone())?);
+                    list_of_test_runs.push(populate(
+                        &attr_hm?,
+                        curr_testsuite.clone(),
+                        curr_timestamp.clone(),
+                    )?);
                 }
                 _ => (),
             },

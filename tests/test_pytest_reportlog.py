@@ -9,6 +9,7 @@ def test_reportlog():
             0.011125802993774414,
             Outcome.Failure,
             "tests/test_junit.py",
+            "1704475472.9840362",
             """AssertionError: assert (tests.test_parsers.TestParsers::test_junit[junit.xml--True], Failure, 0.001, pytest, self = &lt;test_parsers.TestPars...t_parsers.TestParsers.test_junit[jest-junit.xml-]', 'outcome': 'pass'}] == ''\\n\\ntests/test_parsers.py:16: AssertionErro) == (tests.test_parsers.TestParsers::test_junit[junit.xml--True], Failure, 0.001, pytest, self = &lt;test_parsers.TestPars..._parsers.TestParsers.test_junit[jest-junit.xml-]', 'outcome': 'pass'}] == ''\\n\\ntests/test_parsers.py:16: AssertionError)""",
         ),
         Testrun(
@@ -16,6 +17,7 @@ def test_reportlog():
             0.0010750293731689453,
             Outcome.Pass,
             "tests/test_junit.py",
+            "1704475472.995361",
             None,
         ),
         Testrun(
@@ -23,6 +25,7 @@ def test_reportlog():
             0.0008599758148193359,
             Outcome.Pass,
             "tests/test_junit.py",
+            "1704475472.996614",
             None,
         ),
     ]
