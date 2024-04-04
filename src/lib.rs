@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+mod failure_message;
 mod helpers;
 mod junit;
 mod pytest_reportlog;
@@ -19,6 +20,11 @@ fn test_results_parser(_py: Python, m: &PyModule) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(vitest_json::parse_vitest_json, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        failure_message::escape_failure_message,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(failure_message::shorten_file_paths, m)?)?;
 
     Ok(())
 }
