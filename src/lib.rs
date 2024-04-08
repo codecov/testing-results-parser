@@ -21,10 +21,21 @@ fn test_results_parser(_py: Python, m: &PyModule) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(vitest_json::parse_vitest_json, m)?)?;
     m.add_function(wrap_pyfunction!(
-        failure_message::escape_failure_message,
+        failure_message::escape_failure_message_pystring,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(failure_message::shorten_file_paths, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        failure_message::escape_failure_message_rust_string,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        failure_message::shorten_file_paths_pystring,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        failure_message::shorten_file_paths_rust_string,
+        m
+    )?)?;
 
     Ok(())
 }
