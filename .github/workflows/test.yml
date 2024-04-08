@@ -38,6 +38,8 @@ jobs:
           token: ${{ secrets.CODECOV_ORG_TOKEN }}
           url: ${{ secrets.CODECOV_URL }}
           file: unit.junit.xml
+          disable_search: true
+
 
       - name: Upload results to codecov
         if: ${{ !cancelled() }}
@@ -46,3 +48,4 @@ jobs:
           token: ${{ secrets.CODECOV_ORG_TOKEN_STAGING }}
           url: ${{ secrets.CODECOV_STAGING_API_URL }}
           file: unit.junit.xml
+          disable_search: true
