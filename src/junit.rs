@@ -5,7 +5,7 @@ use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use std::collections::HashMap;
 
-use crate::helpers::{s, ParserError};
+use crate::helpers::ParserError;
 use crate::testrun::{Outcome, Testrun};
 
 // from https://gist.github.com/scott-codecov/311c174ecc7de87f7d7c50371c6ef927#file-cobertura-rs-L18-L31

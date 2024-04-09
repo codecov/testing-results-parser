@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-use crate::helpers::{s, ParserError};
+use crate::helpers::ParserError;
 use crate::testrun::{Outcome, Testrun};
 
 #[derive(Serialize, Deserialize, Debug)]
