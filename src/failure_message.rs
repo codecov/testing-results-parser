@@ -86,22 +86,15 @@ fn generate_failure_info(failure_message: &Option<String>) -> String {
 
 #[derive(FromPyObject)]
 struct Failure {
-    #[pyo3(attribute("name"))]
     name: String,
-    #[pyo3(attribute("testsuite"))]
     testsuite: String,
-    #[pyo3(attribute("failure_message"))]
     failure_message: Option<String>,
 }
 #[derive(FromPyObject)]
 struct MessagePayload {
-    #[pyo3(attribute("passed"))]
     passed: i32,
-    #[pyo3(attribute("failed"))]
     failed: i32,
-    #[pyo3(attribute("skipped"))]
     skipped: i32,
-    #[pyo3(attribute("failures"))]
     failures: Vec<Failure>,
 }
 
