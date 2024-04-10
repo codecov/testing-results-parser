@@ -1,19 +1,12 @@
 use lazy_static::lazy_static;
 use phf::phf_ordered_map;
 
-use pyo3::{intern, prelude::*, types::PyString};
+use pyo3::{prelude::*, types::PyString};
 
 use itertools::Itertools;
 use regex::Regex;
 
 use crate::helpers::s;
-
-#[macro_export]
-macro_rules! getattr {
-    ( $x:expr, $y:expr, $z:expr ) => {
-        $x.getattr($z, $y)?.extract($z)?
-    };
-}
 
 // Need to use an ordered map to make sure we replace '>' before
 // we replace '\n', so that we don't replace the '>' in '<br>'
@@ -72,14 +65,14 @@ pub fn shorten_file_paths(failure_message: String) -> String {
     resulting_string
 }
 
-fn generate_test_description(testsuite: String, name: String) -> String {
+fn generate_test_description(testsuite: &String, name: &String) -> String {
     format!(
         "Testsuite:<br>{}<br><br>Test name:<br>{}<br>",
         testsuite, name
     )
 }
 
-fn generate_failure_info(failure_message: Option<String>) -> String {
+fn generate_failure_info(failure_message: &Option<String>) -> String {
     match failure_message {
         None => s("No failure message available"),
         Some(x) => {
@@ -91,16 +84,36 @@ fn generate_failure_info(failure_message: Option<String>) -> String {
     }
 }
 
+#[derive(FromPyObject)]
+struct Failure {
+    #[pyo3(attribute("name"))]
+    name: String,
+    #[pyo3(attribute("testsuite"))]
+    testsuite: String,
+    #[pyo3(attribute("failure_message"))]
+    failure_message: Option<String>,
+}
+#[derive(FromPyObject)]
+struct MessagePayload {
+    #[pyo3(attribute("passed"))]
+    passed: i32,
+    #[pyo3(attribute("failed"))]
+    failed: i32,
+    #[pyo3(attribute("skipped"))]
+    skipped: i32,
+    #[pyo3(attribute("failures"))]
+    failures: Vec<Failure>,
+}
+
 #[pyfunction]
-pub fn build_message<'py>(py: Python<'py>, payload: &PyAny) -> PyResult<&'py PyString> {
+pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<&'py PyString> {
     let mut message: Vec<String> = Vec::new();
     let header = s("### :x: Failed Test Results: ");
     message.push(header);
 
-    let thing = payload.to_object(py);
-    let failed: i32 = thing.getattr(py, "failed")?.extract(py)?;
-    let passed: i32 = thing.getattr(py, "passed")?.extract(py)?;
-    let skipped: i32 = thing.getattr(py, "skipped")?.extract(py)?;
+    let failed: i32 = payload.failed;
+    let passed: i32 = payload.passed;
+    let skipped: i32 = payload.skipped;
 
     let completed = failed + passed + skipped;
     let results_summary = format!(
@@ -116,14 +129,12 @@ pub fn build_message<'py>(py: Python<'py>, payload: &PyAny) -> PyResult<&'py PyS
     ];
     message.append(&mut details_beginning.to_vec());
 
-    let binding = thing.getattr(py, "failures")?;
-    let failures: Vec<&PyAny> = binding.extract(py)?;
+    let failures = payload.failures;
     for fail in failures {
-        let test_instance_obj = fail.to_object(py);
-        let name = getattr!(test_instance_obj, intern!(py, "name"), py);
-        let testsuite = getattr!(test_instance_obj, intern!(py, "testsuite"), py);
+        let name = &fail.name;
+        let testsuite = &fail.testsuite;
+        let failure_message = &fail.failure_message;
         let test_description = generate_test_description(name, testsuite);
-        let failure_message = getattr!(test_instance_obj, intern!(py, "failure_message"), py);
         let failure_information = generate_failure_info(failure_message);
         let single_test_row = format!(
             "| <pre>{}</pre> | <pre>{}</pre> |",
