@@ -84,14 +84,14 @@ fn generate_failure_info(failure_message: &Option<String>) -> String {
     }
 }
 
-#[derive(FromPyObject)]
-struct Failure {
+#[derive(FromPyObject, Debug)]
+pub struct Failure {
     name: String,
     testsuite: String,
     failure_message: Option<String>,
 }
-#[derive(FromPyObject)]
-struct MessagePayload {
+#[derive(FromPyObject, Debug)]
+pub struct MessagePayload {
     passed: i32,
     failed: i32,
     skipped: i32,
