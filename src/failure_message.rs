@@ -110,7 +110,7 @@ fn generate_failure_info(failure_message: &Option<String>, flake: &Option<Flake>
             let mut resulting_string = x.clone();
             resulting_string = shorten_file_paths(resulting_string);
             resulting_string = escape_failure_message(resulting_string);
-            format!("<pre>{}</pre>", resulting_string)
+            format!("{}", resulting_string)
         }
     };
     let flake_section = match flake {
@@ -177,13 +177,43 @@ struct Flake {
     is_new_flake: bool,
 }
 
-#[derive(FromPyObject, Debug)]
+#[derive(Debug)]
 pub struct Failure {
     name: String,
     testsuite: String,
     failure_message: Option<String>,
     flags: Option<Vec<String>>,
     flake: Option<Flake>,
+}
+
+// want to accept objects that may not have the flags or flake attributes set
+impl FromPyObject<'_> for Failure {
+    fn extract<'source>(ob: &'source PyAny) -> PyResult<Self> {
+        let name = ob.getattr("name")?.extract()?;
+        let testsuite = ob.getattr("testsuite")?.extract()?;
+        let failure_message = ob.getattr("failure_message")?.extract()?;
+        let flags: Option<Vec<String>> = match ob.getattr("flags") {
+            Err(_) => None,
+            Ok(x) => match x.get_type().name()?.ends_with("NoneType") {
+                true => None,
+                false => Some(x.extract()?),
+            },
+        };
+        let flake: Option<Flake> = match ob.getattr("flake") {
+            Err(_) => None,
+            Ok(x) => match x.get_type().name()?.ends_with("NoneType") {
+                true => None,
+                false => Some(x.extract()?),
+            },
+        };
+        Ok(Failure {
+            name: name,
+            testsuite: testsuite,
+            failure_message: failure_message,
+            flags: flags,
+            flake: flake,
+        })
+    }
 }
 
 #[derive(FromPyObject, Debug)]
@@ -225,7 +255,7 @@ pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<
         let flags = &fail.flags;
         let failure_message = &fail.failure_message;
         let flake = &fail.flake;
-        let test_description = generate_test_description(name, testsuite, flags, flake);
+        let test_description = generate_test_description(testsuite, name, flags, flake);
         let failure_information = generate_failure_info(failure_message, flake);
         let single_test_row = format!("| {} | {} |", test_description, failure_information);
         message.push(single_test_row);
