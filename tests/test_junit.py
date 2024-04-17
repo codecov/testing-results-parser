@@ -7,7 +7,7 @@ class TestParsers:
         "filename,expected",
         [
             (
-                "./tests/junit.xml",
+                "./tests/samples/junit.xml",
                 [
                     Testrun(
                         "tests.test_parsers.TestParsers::test_junit[junit.xml--True]",
@@ -41,7 +41,7 @@ tests/test_parsers.py:16: AssertionError""",
                 ],
             ),
             (
-                "./tests/jest-junit.xml",
+                "./tests/samples/jest-junit.xml",
                 [
                     Testrun(
                         "Title when rendered renders pull title::Title when rendered renders pull title",
@@ -74,7 +74,7 @@ tests/test_parsers.py:16: AssertionError""",
                 ],
             ),
             (
-                "./tests/vitest-junit.xml",
+                "./tests/samples/vitest-junit.xml",
                 [
                     Testrun(
                         "__tests__/test-file-1.test.ts::first test file &gt; 2 + 2 should equal 4",
@@ -94,7 +94,7 @@ tests/test_parsers.py:16: AssertionError""",
                 ],
             ),
             (
-                "./tests/empty_failure.junit.xml",
+                "./tests/samples/empty_failure.junit.xml",
                 [
                     Testrun(
                         "test.test::test.test works",

@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use phf::phf_ordered_map;
 
-use pyo3::{prelude::*, types::PyString};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyString};
 
 use itertools::Itertools;
 use regex::Regex;
@@ -65,23 +65,116 @@ pub fn shorten_file_paths(failure_message: String) -> String {
     resulting_string
 }
 
-fn generate_test_description(testsuite: &String, name: &String) -> String {
-    format!(
-        "Testsuite:<br>{}<br><br>Test name:<br>{}<br>",
-        testsuite, name
-    )
+fn generate_test_description(
+    testsuite: &String,
+    name: &String,
+    flags: &Option<Vec<String>>,
+    flake: &Option<Flake>,
+) -> String {
+    let flags_section = match flags {
+        Some(flags) => {
+            let mut flag_list: Vec<String> = vec![];
+            for flag in flags {
+                flag_list.push(format!("- {}", flag));
+            }
+
+            let flag_list_string = flag_list.join("<br>");
+            format!("**Flags**:<br>{}<br>", flag_list_string)
+        }
+        None => "".to_string(),
+    };
+    let test_description_section = format!(
+        "<pre>Testsuite:<br>{}<br><br>Test name:<br>{}<br>{}</pre>",
+        testsuite, name, flags_section
+    );
+
+    match flake {
+        Some(flake) => {
+            let title = match flake.is_new_flake {
+                true => "Newly Detected Flake",
+                false => "Known Flaky Test",
+            };
+            format!(
+                ":snowflake::card_index_dividers: **{}**<br>{}",
+                title, test_description_section
+            )
+        }
+        None => test_description_section,
+    }
 }
 
-fn generate_failure_info(failure_message: &Option<String>) -> String {
-    match failure_message {
+fn generate_failure_info(failure_message: &Option<String>, flake: &Option<Flake>) -> String {
+    let failure_message = match failure_message {
         None => s("No failure message available"),
         Some(x) => {
             let mut resulting_string = x.clone();
             resulting_string = shorten_file_paths(resulting_string);
             resulting_string = escape_failure_message(resulting_string);
-            resulting_string
+            format!("<pre>{}</pre>", resulting_string)
+        }
+    };
+    let flake_section = match flake {
+        None => "".to_string(),
+        Some(flake) => {
+            let mut flake_messages: Vec<String> = vec![];
+            for symptom in &flake.symptoms {
+                let symptom_msg = match symptom {
+                    FlakeSymptomType::ConsecutiveDiffOutcomes => {
+                        "Differing outcomes on the same commit"
+                    }
+                    FlakeSymptomType::FailedInDefaultBranch => "Failure on default branch",
+                    FlakeSymptomType::UnrelatedMatchingFailures => {
+                        "Matching failures on unrelated branches"
+                    }
+                }
+                .to_string();
+                let msg = format!(":snowflake: :card_index_dividers: **{}**<br>", symptom_msg);
+                flake_messages.push(msg);
+            }
+            flake_messages.join("")
+        }
+    };
+    format!("{}<pre>{}</pre>", flake_section, failure_message)
+}
+
+#[derive(Debug)]
+enum FlakeSymptomType {
+    FailedInDefaultBranch,
+    ConsecutiveDiffOutcomes,
+    UnrelatedMatchingFailures,
+}
+
+impl FromPyObject<'_> for FlakeSymptomType {
+    fn extract<'source>(ob: &'source PyAny) -> PyResult<Self> {
+        match ob.get_type().name()?.ends_with("FlakeSymptomType") {
+            true => (),
+            false => {
+                return Err(PyTypeError::new_err(format!(
+                    "Type passed is not FlakeSymptomType: {} {}",
+                    ob.get_type().name()?,
+                    ob.str()?.to_str()?
+                )))
+            }
+        };
+        match ob.str()?.to_str()? {
+            "FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH" => {
+                Ok(FlakeSymptomType::FailedInDefaultBranch)
+            }
+            "FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES" => {
+                Ok(FlakeSymptomType::ConsecutiveDiffOutcomes)
+            }
+            "FlakeSymptomType.UNRELATED_MATCHING_FAILURES" => {
+                Ok(FlakeSymptomType::UnrelatedMatchingFailures)
+            }
+            _ => return Err(PyTypeError::new_err("Type passed is not FlakeSymptomType")),
         }
     }
+}
+
+#[derive(FromPyObject, Debug)]
+struct Flake {
+    symptoms: Vec<FlakeSymptomType>,
+    is_new_flake: bool,
 }
 
 #[derive(FromPyObject, Debug)]
@@ -89,7 +182,10 @@ pub struct Failure {
     name: String,
     testsuite: String,
     failure_message: Option<String>,
+    flags: Option<Vec<String>>,
+    flake: Option<Flake>,
 }
+
 #[derive(FromPyObject, Debug)]
 pub struct MessagePayload {
     passed: i32,
@@ -126,13 +222,12 @@ pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<
     for fail in failures {
         let name = &fail.name;
         let testsuite = &fail.testsuite;
+        let flags = &fail.flags;
         let failure_message = &fail.failure_message;
-        let test_description = generate_test_description(name, testsuite);
-        let failure_information = generate_failure_info(failure_message);
-        let single_test_row = format!(
-            "| <pre>{}</pre> | <pre>{}</pre> |",
-            test_description, failure_information
-        );
+        let flake = &fail.flake;
+        let test_description = generate_test_description(name, testsuite, flags, flake);
+        let failure_information = generate_failure_info(failure_message, flake);
+        let single_test_row = format!("| {} | {} |", test_description, failure_information);
         message.push(single_test_row);
     }
 

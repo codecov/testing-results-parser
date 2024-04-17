@@ -27,7 +27,7 @@ def test_reportlog():
         ),
     ]
 
-    with open("tests/log.jsonl", "b+r") as f:
+    with open("tests/samples/log.jsonl", "b+r") as f:
         testruns = parse_pytest_reportlog(f.read())
         assert len(testruns) == len(expected)
         for restest, extest in zip(testruns, expected):

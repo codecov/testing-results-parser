@@ -1,15 +1,16 @@
 from dataclasses import dataclass
+from enum import Enum
 from test_results_parser import escape_failure_message, shorten_file_paths, build_message
 
 def test_escape_failure_message():
-    with open('./tests/windows.junit.xml') as f:
+    with open('./tests/samples/windows.junit.xml') as f:
         failure_message = f.read()
     res = escape_failure_message(failure_message)
 
     assert res == """Error: expect(received).toBe(expected) // Object.is equality<br><br>Expected: 4<br>Received: 5<br>at Object.&amp;lt;anonymous&amp;gt;<br>(/Users/user/dev/repo/demo/calculator/calculator.test.ts:5:26)<br>at Promise.then.completed<br>(/Users/user/dev/repo/node_modules/jest-circus/build/utils.js:298:28)<br>at new Promise (&amp;lt;anonymous&amp;gt;)<br>at callAsyncCircusFn<br>(/Users/user/dev/repo/node_modules/jest-circus/build/utils.js:231:10)<br>at _callCircusTest<br>(/Users/user/dev/repo/node_modules/jest-circus/build/run.js:316:40)<br>at processTicksAndRejections (node:internal/process/task_queues:95:5)<br>at _runTest<br>(/Users/user/dev/repo/node_modules/jest-circus/build/run.js:252:3)<br>at _runTestsForDescribeBlock<br>(/Users/user/dev/repo/node_modules/jest-circus/build/run.js:126:9)<br>at run<br>(/Users/user/dev/repo/node_modules/jest-circus/build/run.js:71:3)<br>at runAndTransformResultsToJestFormat<br>(/Users/user/dev/repo/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)<br>at jestAdapter<br>(/Users/user/dev/repo/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)<br>at runTestInternal<br>(/Users/user/dev/repo/node_modules/jest-runner/build/runTest.js:367:16)<br>at runTest<br>(/Users/user/dev/repo/node_modules/jest-runner/build/runTest.js:444:34)"""
 
 def test_shorten_file_paths():
-    with open('./tests/windows.junit.xml') as f:
+    with open('./tests/samples/windows.junit.xml') as f:
         failure_message = f.read()
 
     res = shorten_file_paths(failure_message)
@@ -44,7 +45,7 @@ at runTest
 (.../jest-runner/build/runTest.js:444:34)"""
 
 def test_shorten_and_escape_failure_message():
-    with open('./tests/windows.junit.xml') as f:
+    with open('./tests/samples/windows.junit.xml') as f:
         failure_message = f.read()
 
     partial_res = shorten_file_paths(failure_message)
@@ -79,6 +80,24 @@ def test_shorten_file_paths_long_path_leading_slash():
     assert res == ".../should/be/shortened.txt"
 
 def test_build_message():
+    class FlakeSymptomType(Enum):
+        FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
+        CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
+        UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
+
+    @dataclass
+    class Flake:
+        symptoms = []
+        is_new_flake = True
+
+    @dataclass
+    class Run:
+        name = ""
+        testsuite = ""
+        failure_message = ""
+        flags = None
+        flake = None
+
     @dataclass
     class Thing:
         failed = 0
@@ -86,18 +105,16 @@ def test_build_message():
         skipped = 0
         failures = []
 
-    @dataclass
-    class Run:
-        name = ""
-        testsuite = ""
-        failure_message = ""
-        
     run1 = Run()
     run2 = Run()
 
     run1.name = "hello"
     run1.testsuite = "world"
     run1.failure_message = "I failed"
+    run1.flags = ["hello", "world"]
+    run1.flake = Flake()
+    run1.flake.is_new_flake = False
+    run1.flake.symptoms = [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH, FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
 
 
     run2.name = "hello"
@@ -118,6 +135,5 @@ Completed 6 tests with **`2 failed`**, 1 passed and 3 skipped.
 
 | **Test Description** | **Failure message** |
 | :-- | :-- |
-| <pre>Testsuite:<br>hello<br><br>Test name:<br>world<br></pre> | <pre>I failed</pre> |
+| :snowflake::card_index_dividers: **Known Flaky Test**<br><pre>Testsuite:<br>hello<br><br>Test name:<br>world<br>**Flags**:<br>- hello<br>- world<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br>:snowflake: :card_index_dividers: **Differing outcomes on the same commit**<br><pre><pre>I failed</pre></pre> |
 | <pre>Testsuite:<br>hello<br><br>Test name:<br>again<br></pre> | <pre>No failure message available</pre> |"""
-

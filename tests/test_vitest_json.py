@@ -34,7 +34,7 @@ def test_vitest_json():
         ),
     ]
 
-    with open("tests/vitest.json", "b+r") as f:
+    with open("tests/samples/vitest.json", "b+r") as f:
         testruns = parse_vitest_json(f.read())
 
         assert len(testruns) == len(expected)
