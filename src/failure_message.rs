@@ -18,6 +18,9 @@ static REPLACEMENTS: phf::OrderedMap<&'static str, &'static str> = phf_ordered_m
     "&" => "&amp;",
     "\r" =>  "",
     "\n" =>  "<br>",
+    "*" => "\\*",
+    "|" => "\\|",
+    "_" => "\\_"
 };
 
 #[pyfunction]
@@ -110,7 +113,7 @@ fn generate_failure_info(failure_message: &Option<String>, flake: &Option<Flake>
             let mut resulting_string = x.clone();
             resulting_string = shorten_file_paths(resulting_string);
             resulting_string = escape_failure_message(resulting_string);
-            format!("{}", resulting_string)
+            resulting_string
         }
     };
     let flake_section = match flake {
