@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lazy_static::lazy_static;
 use phf::phf_ordered_map;
 
@@ -120,7 +122,7 @@ fn generate_failure_info(failure_message: &Option<String>, flake: &Option<Flake>
         None => "".to_string(),
         Some(flake) => {
             let mut flake_messages: Vec<String> = vec![];
-            for symptom in &flake.symptoms {
+            for symptom in &flake.flake_type {
                 let symptom_msg = match symptom {
                     FlakeSymptomType::ConsecutiveDiffOutcomes => {
                         "Differing outcomes on the same commit"
@@ -140,7 +142,7 @@ fn generate_failure_info(failure_message: &Option<String>, flake: &Option<Flake>
     format!("{}<pre>{}</pre>", flake_section, failure_message)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum FlakeSymptomType {
     FailedInDefaultBranch,
     ConsecutiveDiffOutcomes,
@@ -174,9 +176,9 @@ impl FromPyObject<'_> for FlakeSymptomType {
     }
 }
 
-#[derive(FromPyObject, Debug)]
-struct Flake {
-    symptoms: Vec<FlakeSymptomType>,
+#[derive(FromPyObject, Debug, Clone)]
+pub struct Flake {
+    flake_type: Vec<FlakeSymptomType>,
     is_new_flake: bool,
 }
 
@@ -186,7 +188,7 @@ pub struct Failure {
     testsuite: String,
     failure_message: Option<String>,
     flags: Option<Vec<String>>,
-    flake: Option<Flake>,
+    test_id: Option<String>,
 }
 
 // want to accept objects that may not have the flags or flake attributes set
@@ -202,7 +204,7 @@ impl FromPyObject<'_> for Failure {
                 false => Some(x.extract()?),
             },
         };
-        let flake: Option<Flake> = match ob.getattr("flake") {
+        let test_id: Option<String> = match ob.getattr("test_id") {
             Err(_) => None,
             Ok(x) => match x.get_type().name()?.ends_with("NoneType") {
                 true => None,
@@ -210,11 +212,11 @@ impl FromPyObject<'_> for Failure {
             },
         };
         Ok(Failure {
-            name: name,
-            testsuite: testsuite,
-            failure_message: failure_message,
-            flags: flags,
-            flake: flake,
+            name,
+            testsuite,
+            failure_message,
+            flags,
+            test_id,
         })
     }
 }
@@ -225,6 +227,7 @@ pub struct MessagePayload {
     failed: i32,
     skipped: i32,
     failures: Vec<Failure>,
+    flaky_tests: Option<HashMap<String, Flake>>,
 }
 
 #[pyfunction]
@@ -252,14 +255,26 @@ pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<
     message.append(&mut details_beginning.to_vec());
 
     let failures = payload.failures;
+    let flakes = payload.flaky_tests;
     for fail in failures {
         let name = &fail.name;
         let testsuite = &fail.testsuite;
         let flags = &fail.flags;
         let failure_message = &fail.failure_message;
-        let flake = &fail.flake;
-        let test_description = generate_test_description(testsuite, name, flags, flake);
-        let failure_information = generate_failure_info(failure_message, flake);
+        let mut flake = None;
+        match flakes {
+            None => {}
+            Some(ref f) => match fail.test_id {
+                None => {}
+                Some(x) => match f.get(&x) {
+                    None => {}
+                    Some(i) => flake = Some(i.clone()),
+                },
+            },
+        }
+
+        let test_description = generate_test_description(testsuite, name, flags, &flake);
+        let failure_information = generate_failure_info(failure_message, &flake);
         let single_test_row = format!("| {} | {} |", test_description, failure_information);
         message.push(single_test_row);
     }

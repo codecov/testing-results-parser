@@ -80,60 +80,63 @@ def test_shorten_file_paths_long_path_leading_slash():
     assert res == ".../should/be/shortened.txt"
 
 def test_build_message():
+
     class FlakeSymptomType(Enum):
         FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
         CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
         UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
 
-    @dataclass
-    class Flake:
-        symptoms = []
-        is_new_flake = True
 
     @dataclass
-    class Run:
-        name = ""
-        testsuite = ""
-        failure_message = ""
-        flags = None
-        flake = None
+    class TestResultsNotificationFailure:
+        failure_message: str = ""
+        testsuite: str = ""
+        name: str = ""
+        flags: list[str] = lambda: list()
+        test_id: str = ""
+
 
     @dataclass
-    class Thing:
-        failed = 0
-        passed = 0
-        skipped = 0
-        failures = []
-
-    run1 = Run()
-    run2 = Run()
-
-    run1.name = "hello"
-    run1.testsuite = "world"
-    run1.failure_message = "I failed"
-    run1.flags = ["hello", "world"]
-    run1.flake = Flake()
-    run1.flake.is_new_flake = False
-    run1.flake.symptoms = [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH, FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
+    class TestResultsNotificationFlake:
+        flake_type: list[FlakeSymptomType] = lambda: list()
+        is_new_flake: bool = False
 
 
-    run2.name = "hello"
-    run2.testsuite = "again"
-    run2.failure_message = None
+    @dataclass
+    class TestResultsNotificationPayload:
+        failed: int = 0
+        passed: int = 0
+        skipped: int = 0
+        failures: list[TestResultsNotificationFailure] = lambda: list()
+        flaky_tests: dict[str, TestResultsNotificationFlake] | None = None
 
-    payload = Thing()
-    payload.passed = 1
-    payload.failed = 2
-    payload.skipped = 3
-    payload.failures = [run1, run2]
+    
+    fail = TestResultsNotificationFailure(failure_message="hello world", testsuite="hello", name="world", flags=["i", "am"], test_id="you are")
+    fail2 = TestResultsNotificationFailure(failure_message="foo", testsuite="bar", name="world", flags=["i", "am"], test_id="other test")
+
+
+    flake = TestResultsNotificationFlake(flake_type=[FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH, FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES], is_new_flake=False)
+    flake.flake_type = [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH, FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
+    flake.is_new_flake = False
+
+    payload = TestResultsNotificationPayload(
+        failed=1,
+        passed=2,
+        skipped=3,
+        failures=[fail, fail2],
+        flaky_tests={
+            "you are": flake
+        }
+    )
+
 
     res = build_message(payload)
 
     assert res == """### :x: Failed Test Results: 
-Completed 6 tests with **`2 failed`**, 1 passed and 3 skipped.
+Completed 6 tests with **`1 failed`**, 2 passed and 3 skipped.
 <details><summary>View the full list of failed tests</summary>
 
 | **Test Description** | **Failure message** |
 | :-- | :-- |
-| :snowflake::card_index_dividers: **Known Flaky Test**<br><pre>Testsuite:<br>world<br><br>Test name:<br>hello<br>**Flags**:<br>- hello<br>- world<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br>:snowflake: :card_index_dividers: **Differing outcomes on the same commit**<br><pre>I failed</pre> |
-| <pre>Testsuite:<br>again<br><br>Test name:<br>hello<br></pre> | <pre>No failure message available</pre> |"""
+| :snowflake::card_index_dividers: **Known Flaky Test**<br><pre>Testsuite:<br>hello<br><br>Test name:<br>world<br>**Flags**:<br>- i<br>- am<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br>:snowflake: :card_index_dividers: **Differing outcomes on the same commit**<br><pre>hello world</pre> |
+| <pre>Testsuite:<br>bar<br><br>Test name:<br>world<br>**Flags**:<br>- i<br>- am<br></pre> | <pre>foo</pre> |"""
