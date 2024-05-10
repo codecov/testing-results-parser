@@ -119,5 +119,5 @@ Completed 6 tests with **`2 failed`**, 1 passed and 3 skipped.
 | **Test Description** | **Failure message** |
 | :-- | :-- |
 | <pre>Testsuite:<br>hello<br><br>Test name:<br>world<br></pre> | <pre>I failed</pre> |
-| <pre>Testsuite:<br>hello<br><br>Test name:<br>again<br></pre> | <pre>No failure message available</pre> |"""
-
+| <pre>Testsuite:<br>hello<br><br>Test name:<br>again<br></pre> | <pre>No failure message available</pre> |
+</details>"""
