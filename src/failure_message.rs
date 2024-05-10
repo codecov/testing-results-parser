@@ -136,5 +136,7 @@ pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<
         message.push(single_test_row);
     }
 
+    message.push(s("</details>"));
+
     Ok(&PyString::new(py, &message.join("\n")))
 }
