@@ -95,12 +95,12 @@ def test_build_message():
     run1 = Run()
     run2 = Run()
 
-    run1.name = "hello"
+    run1.name = "hello::world"
     run1.testsuite = "world"
     run1.failure_message = "I failed"
 
 
-    run2.name = "hello"
+    run2.name = "hello::world"
     run2.testsuite = "again"
     run2.failure_message = None
 
@@ -116,8 +116,12 @@ def test_build_message():
 Completed 6 tests with **`2 failed`**, 1 passed and 3 skipped.
 <details><summary>View the full list of failed tests</summary>
 
-| **Test Description** | **Failure message** |
-| :-- | :-- |
-| <pre>Testsuite:<br>hello<br><br>Test name:<br>world<br></pre> | <pre>I failed</pre> |
-| <pre>Testsuite:<br>hello<br><br>Test name:<br>again<br></pre> | <pre>No failure message available</pre> |
+## Testsuite: again
+- Test name: hello
+  Class name: world
+<pre>No failure message available</pre>
+## Testsuite: world
+- Test name: hello
+  Class name: world
+<pre>I failed</pre>
 </details>"""

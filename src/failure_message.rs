@@ -1,7 +1,9 @@
+use std::collections::{hash_map::Entry, HashMap};
+
 use lazy_static::lazy_static;
 use phf::phf_ordered_map;
 
-use pyo3::{prelude::*, types::PyString};
+use pyo3::{class, prelude::*, types::PyString};
 
 use itertools::Itertools;
 use regex::Regex;
@@ -65,13 +67,6 @@ pub fn shorten_file_paths(failure_message: String) -> String {
     resulting_string
 }
 
-fn generate_test_description(testsuite: &String, name: &String) -> String {
-    format!(
-        "Testsuite:<br>{}<br><br>Test name:<br>{}<br>",
-        testsuite, name
-    )
-}
-
 fn generate_failure_info(failure_message: &Option<String>) -> String {
     match failure_message {
         None => s("No failure message available"),
@@ -117,23 +112,32 @@ pub fn build_message<'py>(py: Python<'py>, payload: MessagePayload) -> PyResult<
     let details_beginning = [
         s("<details><summary>View the full list of failed tests</summary>"),
         s(""),
-        s("| **Test Description** | **Failure message** |"),
-        s("| :-- | :-- |"),
     ];
     message.append(&mut details_beginning.to_vec());
 
     let failures = payload.failures;
+    let mut per_testsuite: HashMap<String, Vec<Failure>> = HashMap::new();
     for fail in failures {
-        let name = &fail.name;
-        let testsuite = &fail.testsuite;
-        let failure_message = &fail.failure_message;
-        let test_description = generate_test_description(name, testsuite);
-        let failure_information = generate_failure_info(failure_message);
-        let single_test_row = format!(
-            "| <pre>{}</pre> | <pre>{}</pre> |",
-            test_description, failure_information
-        );
-        message.push(single_test_row);
+        let list_of_failures = match per_testsuite.entry(fail.testsuite.clone()) {
+            Entry::Occupied(x) => x.into_mut(),
+            Entry::Vacant(x) => x.insert(vec![]),
+        };
+        list_of_failures.push(fail);
+    }
+
+    for (k, v) in per_testsuite.iter().sorted_by_key(|x| x.0) {
+        message.push(format!("## Testsuite: {}", k));
+        for fail in v {
+            let mut split_name = fail.name.split("::");
+            let test_name = split_name.next().unwrap();
+            let class_name = split_name.next().unwrap();
+            message.push(format!("- Test name: {}", test_name));
+            message.push(format!("  Class name: {}", class_name));
+            message.push(format!(
+                "<pre>{}</pre>",
+                generate_failure_info(&fail.failure_message)
+            ));
+        }
     }
 
     message.push(s("</details>"));
