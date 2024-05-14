@@ -39,13 +39,31 @@ jobs:
           url: ${{ secrets.CODECOV_URL }}
           file: unit.junit.xml
           disable_search: true
+      
+      - name: Upload coverage to codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_ORG_TOKEN }}
+          url: ${{ secrets.CODECOV_URL }}
+          file: coverage.xml
+          disable_search: true
 
 
-      - name: Upload results to codecov
+      - name: Upload results to codecov (staging)
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_ORG_TOKEN_STAGING }}
           url: ${{ secrets.CODECOV_STAGING_API_URL }}
           file: unit.junit.xml
+          disable_search: true
+      
+      - name: Upload coverage to codecov (staging)
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov@v4
+        with:
+          token: ${{ secrets.CODECOV_ORG_TOKEN_STAGING }}
+          url: ${{ secrets.CODECOV_STAGING_API_URL }}
+          file: coverage.xml
           disable_search: true
