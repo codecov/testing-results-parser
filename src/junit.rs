@@ -1,5 +1,3 @@
-use core::str;
-
 use pyo3::prelude::*;
 
 use quick_xml::escape::unescape;
