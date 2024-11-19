@@ -8,6 +8,7 @@ use crate::compute_name::{compute_name, unescape_str};
 use crate::testrun::{check_testsuites_name, Framework, Outcome, ParsingInfo, Testrun};
 use crate::ParserError;
 
+#[derive(Default)]
 struct RelevantAttrs {
     classname: Option<String>,
     name: Option<String>,
@@ -17,12 +18,7 @@ struct RelevantAttrs {
 
 // from https://gist.github.com/scott-codecov/311c174ecc7de87f7d7c50371c6ef927#file-cobertura-rs-L18-L31
 fn get_relevant_attrs(attributes: Attributes) -> PyResult<RelevantAttrs> {
-    let mut rel_attrs: RelevantAttrs = RelevantAttrs {
-        time: None,
-        classname: None,
-        name: None,
-        file: None,
-    };
+    let mut rel_attrs = RelevantAttrs::default();
     for attribute in attributes {
         let attribute = attribute
             .map_err(|e| ParserError::new_err(format!("Error parsing attribute: {}", e)))?;
@@ -54,7 +50,7 @@ fn get_attribute(e: &BytesStart, name: &str) -> PyResult<Option<String>> {
 fn populate(
     rel_attrs: RelevantAttrs,
     testsuite: String,
-    testsuite_time: Option<String>,
+    testsuite_time: Option<&str>,
     framework: Option<Framework>,
 ) -> PyResult<(Testrun, Option<Framework>)> {
     let classname = rel_attrs.classname.unwrap_or_default();
@@ -63,12 +59,12 @@ fn populate(
         .name
         .ok_or_else(|| ParserError::new_err("No name found"))?;
 
-    let duration = match rel_attrs.time {
-        None => testsuite_time
-            .ok_or_else(|| ParserError::new_err("No time/duration found"))?
-            .parse()?,
-        Some(time_str) => time_str.parse()?,
-    };
+    let duration = rel_attrs
+        .time
+        .as_deref()
+        .or(testsuite_time)
+        .ok_or_else(|| ParserError::new_err("No time/duration found"))?
+        .parse()?;
 
     let mut t = Testrun {
         name,
@@ -106,16 +102,15 @@ pub fn parse_junit_xml(file_bytes: &[u8]) -> PyResult<ParsingInfo> {
 
     let mut in_failure: bool = false;
 
-    let mut buf = Vec::new();
-
     let mut framework: Option<Framework> = None;
 
     // every time we come across a testsuite element we update this vector:
     // if the testsuite element contains the time attribute append its value to this vec
     // else append a clone of the last value in the vec
-    let mut testsuite_time: Vec<Option<String>> = vec![];
     let mut testsuite_names: Vec<Option<String>> = vec![];
+    let mut testsuite_times: Vec<Option<String>> = vec![];
 
+    let mut buf = Vec::new();
     loop {
         let event = reader.read_event_into(&mut buf).map_err(|e| {
             ParserError::new_err(format!(
@@ -137,14 +132,12 @@ pub fn parse_junit_xml(file_bytes: &[u8]) -> PyResult<ParsingInfo> {
                             .iter()
                             .rev()
                             .find_map(|e| e.clone())
-                            .or_else(|| Some(String::new()))
                             .unwrap_or_default(),
-                        testsuite_time.iter().rev().find_map(|e| e.clone()),
+                        testsuite_times.iter().rev().find_map(|e| e.as_deref()),
                         framework,
                     )?;
                     saved_testrun = Some(testrun);
                     framework = parsed_framework;
-                    println!("testrun: {:?}", saved_testrun);
                 }
                 b"skipped" => {
                     let testrun = saved_testrun
@@ -165,38 +158,32 @@ pub fn parse_junit_xml(file_bytes: &[u8]) -> PyResult<ParsingInfo> {
                     testrun.outcome = Outcome::Failure;
 
                     testrun.failure_message = get_attribute(&e, "message")?
-                        .as_ref()
-                        .map(|failure_message| unescape_str(failure_message).to_string());
+                        .map(|failure_message| unescape_str(&failure_message).into());
 
                     in_failure = true;
                 }
                 b"testsuite" => {
                     testsuite_names.push(get_attribute(&e, "name")?);
-                    testsuite_time.push(get_attribute(&e, "time")?);
+                    testsuite_times.push(get_attribute(&e, "time")?);
                 }
                 b"testsuites" => {
                     let testsuites_name = get_attribute(&e, "name")?;
-                    framework = if let Some(name) = testsuites_name {
-                        check_testsuites_name(&name)
-                    } else {
-                        None
-                    };
+                    framework = testsuites_name.and_then(|name| check_testsuites_name(&name))
                 }
                 _ => {}
             },
             Event::End(e) => match e.name().as_ref() {
                 b"testcase" => {
-                    let testrun = saved_testrun.ok_or_else(|| {
+                    let testrun = saved_testrun.take().ok_or_else(|| {
                         ParserError::new_err(
                             "Met testcase closing tag without first meeting testcase opening tag",
                         )
                     })?;
                     testruns.push(testrun);
-                    saved_testrun = None;
                 }
                 b"failure" => in_failure = false,
                 b"testsuite" => {
-                    testsuite_time.pop();
+                    testsuite_times.pop();
                     testsuite_names.pop();
                 }
                 _ => (),
@@ -210,9 +197,8 @@ pub fn parse_junit_xml(file_bytes: &[u8]) -> PyResult<ParsingInfo> {
                             .iter()
                             .rev()
                             .find_map(|e| e.clone())
-                            .or_else(|| Some(String::new()))
                             .unwrap_or_default(),
-                        testsuite_time.iter().rev().find_map(|e| e.clone()),
+                        testsuite_times.iter().rev().find_map(|e| e.as_deref()),
                         framework,
                     )?;
                     testruns.push(testrun);
@@ -225,25 +211,21 @@ pub fn parse_junit_xml(file_bytes: &[u8]) -> PyResult<ParsingInfo> {
                     testrun.outcome = Outcome::Failure;
 
                     testrun.failure_message = get_attribute(&e, "message")?
-                        .as_ref()
-                        .map(|failure_message| unescape_str(failure_message).to_string());
+                        .map(|failure_message| unescape_str(&failure_message).into());
                 }
                 _ => {}
             },
-            Event::Text(x) => {
+            Event::Text(mut xml_failure_message) => {
                 if in_failure {
                     let testrun = saved_testrun
                         .as_mut()
                         .ok_or_else(|| ParserError::new_err("Error accessing saved testrun"))?;
 
-                    let mut xml_failure_message = x.into_owned();
                     xml_failure_message.inplace_trim_end();
                     xml_failure_message.inplace_trim_start();
 
                     testrun.failure_message =
-                        Some(String::from_utf8(xml_failure_message.to_vec())?)
-                            .as_ref()
-                            .map(|failure_message| unescape_str(failure_message).to_string());
+                        Some(unescape_str(std::str::from_utf8(&xml_failure_message)?).into());
                 }
             }
 
