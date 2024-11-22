@@ -17,7 +17,7 @@ fn compute_pytest(classname: &str, name: &str, filename: &str) -> String {
 }
 
 pub fn unescape_str(s: &str) -> Cow<'_, str> {
-    unescape(s).unwrap_or_else(|_| Cow::Borrowed(s))
+    unescape(s).unwrap_or(Cow::Borrowed(s))
 }
 
 #[pyfunction(signature = (classname, name, framework, filename=None))]

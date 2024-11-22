@@ -131,6 +131,7 @@ impl Testrun {
 
 #[pymethods]
 impl Testrun {
+    #[allow(clippy::too_many_arguments)]
     #[new]
     #[pyo3(signature = (name, classname, duration, outcome, testsuite, failure_message=None, filename=None, build_url=None, computed_name=None))]
     fn new(

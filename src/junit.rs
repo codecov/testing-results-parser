@@ -88,7 +88,7 @@ fn populate(
             &t.classname,
             &t.name,
             f,
-            t.filename.as_ref().map(|s| s.as_str()),
+            t.filename.as_deref(),
         );
         t.computed_name = Some(computed_name);
     };
