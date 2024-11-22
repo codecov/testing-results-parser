@@ -33,6 +33,8 @@ jobs:
       - run: rustup toolchain install stable --profile minimal --no-self-update
       - uses: Swatinem/rust-cache@v2
 
+      - uses: actions/setup-python@v5
+
       - run: cargo test --workspace --all-features --doc
       - run: cargo doc --workspace --all-features --document-private-items --no-deps
 
@@ -47,12 +49,12 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: taiki-e/install-action@nextest
 
-      - run: cargo llvm-cov nextest --lcov --output-path core.lcov --workspace --all-features --all-targets
-      - run: mv target/nextest/default/core-test-results.xml .
-
       - uses: actions/setup-python@v5
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --all-extras --dev
+
+      - run: cargo llvm-cov nextest --lcov --output-path core.lcov --workspace --all-features --all-targets
+      - run: mv target/nextest/default/core-test-results.xml .
 
       - name: Run Python tests
         run: |

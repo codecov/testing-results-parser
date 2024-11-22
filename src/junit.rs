@@ -84,12 +84,7 @@ fn populate(
 
     let framework = framework.or_else(|| t.framework());
     if let Some(f) = framework {
-        let computed_name = compute_name(
-            &t.classname,
-            &t.name,
-            f,
-            t.filename.as_deref(),
-        );
+        let computed_name = compute_name(&t.classname, &t.name, f, t.filename.as_deref());
         t.computed_name = Some(computed_name);
     };
 
