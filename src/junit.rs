@@ -96,10 +96,7 @@ pub fn parse_junit_xml(file_bytes: &[u8], filepaths: Option<Vec<String>>) -> PyR
 
     reader.config_mut().trim_text(true);
 
-    let network = match filepaths {
-        None => None,
-        Some(filepaths) => Some(filepaths.into_iter().collect()),
-    };
+    let network = filepaths.map(|v| v.into_iter().collect());
 
     let parsing_info = use_reader(&mut reader, network).map_err(|e| {
         let pos = reader.buffer_position();
