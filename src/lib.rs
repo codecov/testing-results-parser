@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 
 mod compute_name;
 mod failure_message;
+mod filetree;
 mod junit;
 mod testrun;
 
